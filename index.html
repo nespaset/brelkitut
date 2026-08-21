@@ -1,0 +1,841 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Брелки Тут — гравировка по дереву</title>
+  <link rel="stylesheet" href="https://yookassa.ru/integration/simplepay/css/yookassa_construct_form.css?v=1.34.0">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body {
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      min-height:100vh;
+      background: #0a0806;
+      color:#f0e8e0;
+      padding:20px;
+      overflow-x:hidden;
+    }
+
+    /* ===== ЗВЁЗДЫ ===== */
+    #stars-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+    .bg-noise {
+      position:fixed; top:0; left:0; width:100%; height:100%; z-index:0;
+      pointer-events:none; opacity:0.02;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='1'/%3E%3C/svg%3E");
+      background-repeat:repeat; background-size:200px 200px;
+    }
+
+    .container {
+      position:relative; z-index:1;
+      max-width:1100px; margin:0 auto;
+      background:rgba(20,16,13,0.8);
+      backdrop-filter:blur(16px);
+      -webkit-backdrop-filter:blur(16px);
+      border-radius:40px;
+      padding:35px 30px 40px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,215,150,0.08);
+      border:1px solid rgba(255,215,150,0.06);
+      animation: fadeUp 0.8s ease-out;
+    }
+    @keyframes fadeUp {
+      0% { opacity:0; transform:translateY(40px); }
+      100% { opacity:1; transform:translateY(0); }
+    }
+
+    .header { text-align:center; margin-bottom:30px; padding-bottom:20px; border-bottom:1px solid rgba(255,215,150,0.08); }
+    .header h1 { font-size:42px; font-weight:300; letter-spacing:4px; background:linear-gradient(135deg,#f6d5b3,#d4a373); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .header p { color:#c4b0a0; font-size:16px; letter-spacing:1px; margin-top:6px; }
+    .header .badge { display:inline-block; margin-top:10px; background:rgba(212,163,115,0.15); padding:6px 20px; border-radius:40px; font-size:13px; color:#d4a373; border:1px solid rgba(212,163,115,0.2); }
+
+    .section-title { font-size:20px; font-weight:300; letter-spacing:2px; color:#d4c0b0; margin:30px 0 15px; padding-bottom:8px; border-bottom:1px solid rgba(255,215,150,0.06); }
+
+    /* ===== ТОВАРЫ ===== */
+    .product-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(160px,1fr)); gap:16px; margin-bottom:10px; }
+    .product-card {
+      background:rgba(255,255,255,0.03);
+      border:1px solid rgba(255,215,150,0.08);
+      border-radius:24px;
+      padding:16px 12px 14px;
+      text-align:center;
+      transition: all 0.3s;
+      cursor:pointer;
+    }
+    .product-card:hover { transform:translateY(-6px) scale(1.02); border-color:rgba(212,163,115,0.3); box-shadow:0 15px 30px rgba(0,0,0,0.5); background:rgba(255,255,255,0.06); }
+    .product-card.selected { border-color:#d4a373; background:rgba(212,163,115,0.08); }
+    .product-card .product-img { width:100%; height:100px; object-fit:contain; margin-bottom:6px; border-radius:8px; background:rgba(255,255,255,0.03); }
+    .product-card .name { font-weight:500; font-size:14px; color:#f0e8e0; }
+    .product-card .desc { font-size:11px; color:#b0a090; min-height:28px; }
+    .product-card .price { font-size:16px; color:#d4a373; }
+    .product-card .qty-control { display:flex; align-items:center; justify-content:center; gap:12px; margin-top:8px; }
+    .product-card .qty-control button {
+      background:rgba(255,255,255,0.05); border:1px solid rgba(255,215,150,0.15); color:#f0e8e0;
+      width:28px; height:28px; border-radius:50%; font-size:16px; cursor:pointer;
+      transition:0.2s;
+    }
+    .product-card .qty-control button:hover { background:rgba(212,163,115,0.2); border-color:#d4a373; }
+    .product-card .qty-control span { min-width:20px; font-size:16px; }
+
+    /* ===== КОРЗИНА ===== */
+    .cart { margin:30px 0 25px; padding:20px 24px; background:rgba(255,255,255,0.02); border-radius:24px; border:1px solid rgba(255,215,150,0.06); }
+    .cart-header { display:flex; justify-content:space-between; align-items:center; font-size:18px; color:#d4c0b0; }
+    .cart-header span:last-child { color:#d4a373; }
+    .cart-items { margin-top:12px; max-height:200px; overflow-y:auto; padding-right:6px; }
+    .cart-items::-webkit-scrollbar { width:4px; }
+    .cart-items::-webkit-scrollbar-thumb { background:#d4a373; border-radius:10px; }
+    .cart-item { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.03); font-size:14px; color:#d4c8c0; }
+    .cart-item .remove { color:#b08060; cursor:pointer; margin-left:12px; transition:0.2s; }
+    .cart-item .remove:hover { color:#d46040; }
+    .cart-empty { color:#8a7a70; font-style:italic; text-align:center; padding:12px 0; }
+
+    /* ===== ДОСТАВКА ===== */
+    .delivery-options {
+      display:flex;
+      gap:20px;
+      flex-wrap:wrap;
+      margin:15px 0 10px;
+    }
+    .delivery-options label {
+      display:flex;
+      align-items:center;
+      gap:8px;
+      background:rgba(255,255,255,0.03);
+      padding:12px 20px;
+      border-radius:40px;
+      border:1px solid rgba(255,215,150,0.06);
+      cursor:pointer;
+      transition:0.3s;
+      font-size:15px;
+    }
+    .delivery-options label:hover { background:rgba(255,255,255,0.06); }
+    .delivery-options input[type="radio"] { accent-color:#d4a373; width:18px; height:18px; }
+    .delivery-options .delivery-price { color:#d4a373; font-weight:500; margin-left:6px; }
+
+    /* ===== БЛОКИ ВИДЖЕТОВ ===== */
+    .widget-block {
+      margin:15px 0 10px;
+    }
+    #ecom-widget-map, #ecom-widget-courier {
+      width:100%;
+      border-radius:20px;
+      overflow:hidden;
+      background:#1a120e;
+      border:1px solid rgba(255,215,150,0.08);
+    }
+    #ecom-widget-map { height:480px; }
+    #ecom-widget-courier { height:740px; }
+
+    .courier-wrapper {
+      background: #ffffff !important;
+      padding: 10px;
+      border-radius: 20px;
+    }
+    #ecom-widget-courier {
+      background: #ffffff !important;
+      filter: none !important;
+      border-color: rgba(0,0,0,0.1) !important;
+    }
+    #pochtaCourierBlock .delivery-price-block {
+      background: #f5f5f5 !important;
+      color: #333 !important;
+    }
+    #pochtaCourierBlock .delivery-price-block .price {
+      color: #d4a373 !important;
+    }
+
+    .delivery-price-block {
+      display:flex;
+      justify-content:space-between;
+      font-size:16px;
+      color:#c4b0a0;
+      padding:12px 16px;
+      background:rgba(255,255,255,0.03);
+      border-radius:16px;
+      margin-top:10px;
+    }
+    .delivery-price-block .price { color:#d4a373; font-weight:500; }
+
+    /* ===== ГОРОД ДЛЯ РАСЧЁТА ===== */
+    .city-input-block {
+      margin: 15px 0;
+    }
+    .city-input-block input {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,215,150,0.1);
+      border-radius: 16px;
+      padding: 12px 16px;
+      color: #f0e8e0;
+      font-size: 15px;
+      outline: none;
+      width: 100%;
+      transition: 0.3s;
+    }
+    .city-input-block input:focus {
+      border-color: #d4a373;
+      background: rgba(255,255,255,0.08);
+    }
+
+    /* ===== СТИЛИЗАЦИЯ ФОРМЫ ЮKASSA ===== */
+    .yoomoney-form-wrapper {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(212, 163, 115, 0.25);
+      border-radius: 24px;
+      padding: 26px;
+      margin: 20px 0;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+    .yoomoney-payment-form {
+      max-width: 100% !important;
+    }
+    .ym-block-title {
+      color: #f6d5b3 !important;
+      font-size: 16px !important;
+      margin-bottom: 14px !important;
+      font-weight: 600 !important;
+      letter-spacing: 0.5px;
+    }
+    .ym-customer-info .ym-input,
+    .ym-input-icon-rub .ym-input {
+      background: #1e1814 !important;
+      border: 1px solid rgba(212, 163, 115, 0.4) !important;
+      color: #ffffff !important;
+      border-radius: 14px !important;
+      padding: 14px 16px !important;
+      margin-bottom: 14px !important;
+      font-size: 15px !important;
+      opacity: 1 !important;
+      display: block !important;
+      width: 100% !important;
+    }
+    .ym-customer-info .ym-input::placeholder,
+    .ym-input-icon-rub .ym-input::placeholder {
+      color: #9e8e80 !important;
+      opacity: 1 !important;
+    }
+    .ym-customer-info .ym-input:focus,
+    .ym-input-icon-rub .ym-input:focus {
+      border-color: #d4a373 !important;
+      background: #28201a !important;
+      box-shadow: 0 0 10px rgba(212,163,115,0.2) !important;
+      outline: none !important;
+    }
+
+    /* Блокируем ручной ввод суммы для пользователя */
+    #yooSumField {
+      cursor: not-allowed !important;
+      background: rgba(30, 24, 20, 0.7) !important;
+      color: #d4a373 !important;
+      font-weight: bold !important;
+    }
+    
+    /* Скрываем дублирующийся ценник внутри кнопки ЮKassa */
+    .ym-price-output {
+      display: none !important;
+    }
+
+    /* Стилизация кнопки */
+    .ym-btn-pay, button.ym-btn-pay {
+      background: #d4a373 !important;
+      color: #1a120e !important;
+      font-weight: 700 !important;
+      border-radius: 30px !important;
+      padding: 14px 42px !important;
+      font-size: 16px !important;
+      line-height: 1.2 !important;
+      transition: 0.3s !important;
+      border: none !important;
+      cursor: pointer !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      text-align: center !important;
+      white-space: nowrap !important;
+    }
+    .ym-btn-pay span, 
+    .ym-btn-pay .ym-text-crop {
+      color: #1a120e !important;
+      font-weight: 700 !important;
+      display: inline-block !important;
+    }
+    .ym-btn-pay:hover {
+      background: #e5b888 !important;
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(212,163,115,0.4) !important;
+    }
+    .ym-logo {
+      filter: brightness(0) invert(0.8) !important;
+    }
+
+    /* ===== ПРИМЕЧАНИЕ ===== */
+    .info-note {
+      background:rgba(212,163,115,0.08);
+      border-left:4px solid #d4a373;
+      padding:14px 18px;
+      border-radius:12px;
+      margin:20px 0;
+      font-size:14px;
+      color:#f0e8e0;
+      line-height:1.6;
+    }
+    .info-note strong { color:#f6d5b3; }
+    .info-note .highlight-box {
+      display: block;
+      margin-top: 6px;
+      color: #d4a373;
+      font-weight: 500;
+    }
+
+    .footer { text-align:center; margin-top:30px; padding-top:20px; border-top:1px solid rgba(255,215,150,0.05); font-size:13px; color:#6a5a4e; }
+
+    @media (max-width:700px) {
+      .container { padding:20px 16px; }
+      .header h1 { font-size:28px; }
+      .product-grid { grid-template-columns:repeat(auto-fill, minmax(140px,1fr)); }
+      #ecom-widget-map { height:350px; }
+      #ecom-widget-courier { height:500px; }
+    }
+    @media (max-width:450px) {
+      .product-grid { grid-template-columns:1fr 1fr; gap:10px; }
+      .product-card { padding:12px 8px; }
+      .product-card .product-img { height:70px; }
+      #ecom-widget-map { height:300px; }
+      #ecom-widget-courier { height:400px; }
+    }
+  </style>
+</head>
+<body>
+
+  <canvas id="stars-canvas"></canvas>
+  <div class="bg-noise"></div>
+
+  <div class="container">
+
+    <div class="header">
+      <h1>✦ Брелки Тут</h1>
+      <p>Гравировка по дереву с душой</p>
+      <div class="badge">🔥 Ручная работа &bull; Отправка из Стерлитамака</div>
+    </div>
+
+    <!-- ===== ТОВАРЫ ===== -->
+    <div class="section-title">📦 Наши изделия</div>
+    <div class="product-grid" id="productGrid"></div>
+
+    <!-- ===== КОРЗИНА ===== -->
+    <div class="cart" id="cartBlock">
+      <div class="cart-header">
+        <span>🛒 Корзина</span>
+        <span id="cartTotal">0 ₽</span>
+      </div>
+      <div class="cart-items" id="cartItems"><div class="cart-empty">Пока пусто...</div></div>
+    </div>
+
+    <!-- ===== ДОСТАВКА ===== -->
+    <div class="section-title">🚚 Выберите способ доставки</div>
+    
+    <div class="city-input-block">
+      <label style="font-size:13px; color:#b0a090; display:block; margin-bottom:6px;">Ваш город (введите и карта сразу переключится):</label>
+      <input type="text" id="cityTo" placeholder="Введите город (например: Уфа, Самара, Казань)" value="" />
+    </div>
+
+    <div class="delivery-options">
+      <label>
+        <input type="radio" name="delivery" value="pochta-pvz" checked />
+        Почта ПВЗ
+      </label>
+      <label>
+        <input type="radio" name="delivery" value="pochta-courier" />
+        Почта курьер
+      </label>
+      <label>
+        <input type="radio" name="delivery" value="cdek" />
+        СДЭК <span class="delivery-price">350 ₽</span>
+      </label>
+    </div>
+
+    <!-- Блок Почта ПВЗ -->
+    <div id="pochtaPvzBlock" class="widget-block">
+      <div id="ecom-widget-map"></div>
+      <div class="delivery-price-block">
+        <span>📮 Доставка Почтой (ПВЗ)</span>
+        <span class="price" id="deliveryPricePvz">Выберите на карте</span>
+      </div>
+    </div>
+
+    <!-- Блок Почта курьер -->
+    <div id="pochtaCourierBlock" class="widget-block courier-wrapper" style="display:none;">
+      <div id="ecom-widget-courier"></div>
+      <div class="delivery-price-block">
+        <span>🚚 Доставка Почтой (курьер)</span>
+        <span class="price" id="deliveryPriceCourier">Выберите на карте</span>
+      </div>
+    </div>
+
+    <!-- Блок СДЭК -->
+    <div id="cdekBlock" style="display:none; padding:12px 16px; background:rgba(255,255,255,0.03); border-radius:16px; margin-top:10px;">
+      <span style="color:#d4a373;">🚚 Доставка СДЭК: 350 ₽ (фиксированная)</span>
+    </div>
+
+    <!-- ===== ПРИМЕЧАНИЕ ===== -->
+    <div class="info-note">
+      <strong>⚠️ Внимание перед оплатой:</strong>
+      <span class="highlight-box">1. В поле контакта укажите ваш номер в Max / WhatsApp или юзернейм/ссылку в VK для связи и согласования гравировки[cite: 1].</span>
+      <span class="highlight-box">2. Выбранный на карте адрес ПВЗ автоматически прописывается в поле адреса ниже.</span>
+    </div>
+
+    <!-- ===== ОПЛАТА ЮKASSA ===== -->
+    <div class="section-title">💳 Оплата заказа</div>
+    <div class="yoomoney-form-wrapper">
+      <form id="paymentForm" class="yoomoney-payment-form" action="https://yookassa.ru/integration/simplepay/payment" method="post" accept-charset="utf-8">
+        <div class="ym-customer-info">
+          <div class="ym-block-title">О покупателе</div>
+          <input name="cps_email" class="ym-input" placeholder="Email" type="email" value="" required>
+          <input name="custName" class="ym-input" placeholder="ФИО" type="text" value="" required>
+          <input name="cps_phone" class="ym-input" placeholder="Телефон в Max / WhatsApp или ссылка на VK" type="text" value="" required>
+          <input name="custAddr" id="custAddrField" class="ym-input" placeholder="Адрес ПВЗ или здания (куда доставить)" type="text" value="" required>
+        </div>
+
+        <div class="ym-hidden-inputs"></div>
+
+        <input name="orderNumber" id="orderNumberField" type="hidden" value="">
+        <input name="comment" id="commentField" type="hidden" value="">
+        <input name="customerNumber" id="customerNumberField" type="hidden" value="">
+        
+        <div class="ym-payment-btn-block ym-before-line ym-align-space-between">
+          <div class="ym-input-icon-rub">
+            <input name="sum" id="yooSumField" placeholder="0.00" class="ym-input ym-sum-input ym-required-input" type="number" step="any" readonly required>
+          </div>
+          <button type="submit" data-text="Заплатить" class="ym-btn-pay ym-result-price" id="mainPayBtn">
+            <span class="ym-text-crop">Заплатить</span>
+          </button>
+          <img src="https://yookassa.ru/integration/simplepay/img/iokassa-gray.svg?v=1.34.0" class="ym-logo" width="114" height="27" alt="ЮKassa">
+        </div>
+        <input name="shopId" type="hidden" value="1442720">
+      </form>
+    </div>
+
+    <div class="footer">🌳 Каждое изделие уникально &bull; Безопасная оплата через ЮKassa</div>
+  </div>
+
+  <!-- ===== СКРИПТЫ ЮKASSA И ПОЧТЫ ===== -->
+  <script src="https://yookassa.ru/integration/simplepay/js/yookassa_construct_form.js?v=1.34.0"></script>
+  <script src="https://widget.pochta.ru/map/widget/widget.js"></script>
+  <script src="https://widget.pochta.ru/courier/widget/widget.js"></script>
+
+  <script>
+    // ============================================================
+    // 1. ТОВАРЫ (9 штук)[cite: 1]
+    // ============================================================
+    const products = [
+      { id:1, name:'Брелок с маркой машины', desc:'6×3 см, любая марка', img:'a.jpg', price:150 },
+      { id:2, name:'Брелок с именем', desc:'6×3 см, гравировка имени', img:'b.jpg', price:150 },
+      { id:3, name:'Брелок на заказ', desc:'6×3 см, по вашему эскизу', img:'c.jpg', price:150 },
+      { id:4, name:'Картина 30×30 см', desc:'Панно из фанеры', img:'d.jpg', price:849 },
+      { id:5, name:'Пахучка в машину', desc:'в виде лого, 1×1 – 6×3 см', img:'e.jpg', price:160 },
+      { id:6, name:'Подставка для чашки', desc:'90×90 мм, фанера', img:'f.jpg', price:199 },
+      { id:7, name:'Набор автомобилиста', desc:'брелок + пахучка', img:'g.jpg', price:399 },
+      { id:8, name:'Набор для дома', desc:'4 подставки для чашек', img:'h.jpg', price:499 },
+      { id:9, name:'Набор подарочный', desc:'брелок + пахучка + 2 подставки', img:'i.jpg', price:549 },
+    ];
+
+    let cart = {};
+    let deliveryMethod = 'pochta-pvz';
+    let deliveryCost = 0;
+    let deliverySelected = false;
+    let selectedPvzAddress = '';
+    window.currentOrderText = '';
+
+    // ============================================================
+    // 2. ЗВЁЗДЫ[cite: 1]
+    // ============================================================
+    (function stars() {
+      const canvas = document.getElementById('stars-canvas');
+      const ctx = canvas.getContext('2d');
+      let w, h;
+      function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
+      window.addEventListener('resize', resize);
+      resize();
+      const stars = [];
+      for (let i = 0; i < 150; i++) {
+        stars.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          speed: 0.3 + Math.random() * 0.7,
+          size: 1 + Math.random() * 2.5,
+          brightness: 0.5 + Math.random() * 0.5,
+        });
+      }
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        for (const s of stars) {
+          s.y += s.speed;
+          if (s.y > h + 20) { s.y = -20; s.x = Math.random() * w; }
+          const alpha = s.brightness * (0.7 + 0.3 * Math.sin(Date.now() / 1000 + s.x));
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 240, 210, ${alpha})`;
+          ctx.fill();
+          if (s.size > 1.5) {
+            ctx.beginPath();
+            ctx.moveTo(s.x, s.y);
+            ctx.lineTo(s.x - 4, s.y - 12 * s.speed);
+            ctx.strokeStyle = `rgba(255, 220, 180, ${alpha * 0.3})`;
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+          }
+        }
+        requestAnimationFrame(draw);
+      }
+      draw();
+    })();
+
+    // ============================================================
+    // 3. КОРЗИНА И СБОР ДАННЫХ ДЛЯ ЮKASSA
+    // ============================================================
+    function renderProducts() {
+      const grid = document.getElementById('productGrid');
+      grid.innerHTML = '';
+      products.forEach(p => {
+        const qty = cart[p.id] || 0;
+        const card = document.createElement('div');
+        card.className = 'product-card' + (qty > 0 ? ' selected' : '');
+        card.innerHTML = `
+          <img class="product-img" src="${p.img}" alt="${p.name}" onerror="this.style.display='none'" />
+          <div class="name">${p.name}</div>
+          <div class="desc">${p.desc}</div>
+          <div class="price">${p.price} ₽</div>
+          <div class="qty-control">
+            <button data-id="${p.id}" data-dir="-1">−</button>
+            <span>${qty}</span>
+            <button data-id="${p.id}" data-dir="1">+</button>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+      document.querySelectorAll('.qty-control button').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          changeQuantity(+btn.dataset.id, +btn.dataset.dir);
+        });
+      });
+      document.querySelectorAll('.product-card').forEach((card, i) => {
+        card.addEventListener('click', () => changeQuantity(products[i].id, 1));
+      });
+    }
+
+    function changeQuantity(id, delta) {
+      const newQty = (cart[id] || 0) + delta;
+      if (newQty <= 0) delete cart[id];
+      else cart[id] = newQty;
+      updateUI();
+    }
+
+    function getCurrentDeliveryCost() {
+      if (deliveryMethod === 'cdek') return 350;
+
+      let priceElement = null;
+      if (deliveryMethod === 'pochta-pvz') {
+        priceElement = document.getElementById('deliveryPricePvz');
+      } else if (deliveryMethod === 'pochta-courier') {
+        priceElement = document.getElementById('deliveryPriceCourier');
+      }
+      
+      if (priceElement) {
+        let text = priceElement.textContent;
+        if (text.includes("Выберите") || text.includes("выбран")) return deliveryCost || 0;
+        
+        text = text.replace(',', '.'); 
+        const numericString = text.replace(/[^\d.]/g, ''); 
+        if (numericString) {
+          const parsed = parseFloat(numericString);
+          if (!isNaN(parsed)) return parsed;
+        }
+      }
+      return deliveryCost;
+    }
+
+    function syncOrderData() {
+      const custName = document.querySelector('input[name="custName"]')?.value.trim() || 'Имя не указано';
+      const custPhone = document.querySelector('input[name="cps_phone"]')?.value.trim() || 'Телефон не указан';
+      const custAddr = document.getElementById('custAddrField')?.value.trim() || 'Адрес не указан';
+      
+      const commentField = document.getElementById('commentField');
+      const custNumField = document.getElementById('customerNumberField');
+      
+      const baseOrderText = window.currentOrderText || 'Пустая корзина'; 
+      const fullText = `${baseOrderText} | 👤 ${custName} | 📞 ${custPhone} | 🏠 Адрес: ${custAddr}`;
+      
+      if(commentField) commentField.value = fullText;
+      if(custNumField) custNumField.value = fullText;
+    }
+
+    document.querySelector('input[name="custName"]')?.addEventListener('input', syncOrderData);
+    document.querySelector('input[name="cps_phone"]')?.addEventListener('input', syncOrderData);
+    document.getElementById('custAddrField')?.addEventListener('input', syncOrderData);
+
+    function updateUI() {
+      renderProducts();
+      const items = document.getElementById('cartItems');
+      const totalSpan = document.getElementById('cartTotal');
+      const sumField = document.getElementById('yooSumField');
+      const orderNumField = document.getElementById('orderNumberField');
+      
+      const entries = Object.entries(cart);
+
+      if (entries.length === 0) {
+        items.innerHTML = '<div class="cart-empty">Пока пусто...</div>';
+        totalSpan.textContent = '0 ₽';
+        if (sumField) sumField.value = '';
+        if (orderNumField) orderNumField.value = '';
+        window.currentOrderText = '';
+        syncOrderData();
+        return;
+      }
+
+      let goodsTotal = 0, html = '', orderItemsList = [], goodsCode = '';
+      entries.forEach(([id, qty]) => {
+        const p = products.find(pr => pr.id === +id);
+        if (!p) return;
+        const sum = p.price * qty;
+        goodsTotal += sum;
+        html += `<div class="cart-item"><span><img src="${p.img}" style="width:24px;height:24px;object-fit:contain;vertical-align:middle;margin-right:6px;" /> ${p.name} × ${qty}</span><span>${sum} ₽ <span class="remove" data-id="${p.id}">✕</span></span></div>`;
+        orderItemsList.push(`${p.name} (x${qty})`);
+        for (let i = 0; i < qty; i++) { goodsCode += id; }
+      });
+      items.innerHTML = html;
+
+      const currentDelivery = getCurrentDeliveryCost();
+      const total = goodsTotal + (currentDelivery > 0 ? currentDelivery : 0);
+
+      if (currentDelivery > 0) {
+        totalSpan.textContent = total + ' ₽ (+' + currentDelivery + ' ₽ доставка)';
+      } else {
+        totalSpan.textContent = total + ' ₽';
+      }
+
+      if (sumField) {
+        sumField.value = total;
+      }
+
+      let deliveryName = 'Почта ПВЗ';
+      let deliveryCode = '1';
+      if (deliveryMethod === 'pochta-courier') { deliveryName = 'Почта Курьер'; deliveryCode = '2'; }
+      if (deliveryMethod === 'cdek') { deliveryName = 'СДЭК'; deliveryCode = '3'; }
+
+      const shortCode = `${goodsCode || '0'}-${deliveryCode}-${Math.round(total)}`;
+      
+      window.currentOrderText = `№${shortCode}: ${orderItemsList.join('; ')} [Дост: ${deliveryName} ${currentDelivery}р. Итог: ${total}р]`;
+      if (orderNumField) orderNumField.value = shortCode;
+      
+      syncOrderData();
+
+      document.querySelectorAll('.remove').forEach(el => {
+        el.addEventListener('click', () => {
+          delete cart[+el.dataset.id];
+          updateUI();
+        });
+      });
+    }
+
+    // ============================================================
+    // 4. ВИДЖЕТ ПОЧТА ПВЗ (С ПЕРЕЗАГРУЗКОЙ ПО ГОРОДУ)[cite: 1]
+    // ============================================================
+    function getTotalWeight() {
+      let totalItems = 0;
+      Object.keys(cart).forEach(id => { totalItems += cart[id]; });
+      return Math.max(200, totalItems * 150);
+    }
+    function getTotalSum() {
+      let sum = 0;
+      Object.keys(cart).forEach(id => {
+        const p = products.find(pr => pr.id === +id);
+        if (p) sum += p.price * cart[id];
+      });
+      return sum * 100;
+    }
+    function getOrderLines() {
+      const lines = [];
+      Object.keys(cart).forEach(id => {
+        const qty = cart[id];
+        if (qty > 0) lines.push({ quantity: qty, length: 10, width: 10, height: 10 });
+      });
+      return lines.length ? lines : [{ quantity: 1, length: 10, width: 10, height: 10 }];
+    }
+
+    window.callbackPvz = function(data) {
+      console.log('Почта ПВЗ данные:', data);
+      deliverySelected = true; 
+      
+      let rawCost = data.cashOfDelivery || data.delivery || data.tariff || 0;
+      let parsed = parseFloat(rawCost);
+      if (isNaN(parsed)) parsed = 0;
+      
+      if (parsed > 0) {
+        deliveryCost = Math.round(parsed / 100);
+        document.getElementById('deliveryPricePvz').textContent = deliveryCost + ' ₽';
+      } else {
+        deliveryCost = 0;
+        document.getElementById('deliveryPricePvz').textContent = 'Пункт выбран';
+      }
+
+      const fullAddress = data.addressTo || data.address || data.pvzAddress || data.pvz_address || data.rawAddress || data.nameTo || data.name || '';
+      const zip = data.indexTo || data.index || data.postalCode || '';
+
+      if (fullAddress || zip) {
+        let resultAddr = '';
+        if (zip) resultAddr += zip + ', ';
+        if (fullAddress) resultAddr += fullAddress;
+        
+        const addrField = document.getElementById('custAddrField');
+        if (addrField) {
+          addrField.value = resultAddr;
+          syncOrderData();
+        }
+      }
+
+      updateUI();
+    };
+
+    function initPochtaPvz() {
+      if (deliveryMethod !== 'pochta-pvz') return;
+      if (typeof ecomStartWidget !== 'function') return;
+      
+      // Очищаем контейнер карты перед новой отрисовкой города
+      const container = document.getElementById('ecom-widget-map');
+      if (container) container.innerHTML = '';
+
+      const city = document.getElementById('cityTo').value.trim() || 'Стерлитамак';
+
+      try {
+        ecomStartWidget({
+          id: 63046,
+          containerId: 'ecom-widget-map',
+          weight: getTotalWeight(),
+          sumoc: getTotalSum(),
+          callbackFunction: window.callbackPvz, 
+          start_location: city,
+          order_lines: getOrderLines()
+        });
+      } catch (e) {
+        console.error('Ошибка виджета ПВЗ:', e);
+      }
+    }
+
+    // ============================================================
+    // 5. ВИДЖЕТ ПОЧТА КУРЬЕР[cite: 1]
+    // ============================================================
+    window.callbackCourier = function(data) {
+      console.log('Почта курьер данные:', data);
+      deliverySelected = true; 
+      
+      let rawCost = data.cashOfDelivery || data.delivery || data.tariff || 0;
+      let parsed = parseFloat(rawCost);
+      if (isNaN(parsed)) parsed = 0;
+      
+      if (parsed > 0) {
+        deliveryCost = Math.round(parsed / 100);
+        document.getElementById('deliveryPriceCourier').textContent = deliveryCost + ' ₽';
+      } else {
+        deliveryCost = 0;
+        document.getElementById('deliveryPriceCourier').textContent = 'Адрес выбран';
+      }
+
+      const fullAddress = data.addressTo || data.address || data.courierAddress || data.rawAddress || '';
+      const zip = data.indexTo || data.index || data.postalCode || '';
+
+      if (fullAddress || zip) {
+        let resultAddr = '';
+        if (zip) resultAddr += zip + ', ';
+        if (fullAddress) resultAddr += fullAddress;
+        
+        const addrField = document.getElementById('custAddrField');
+        if (addrField) {
+          addrField.value = resultAddr;
+          syncOrderData();
+        }
+      }
+
+      updateUI();
+    };
+
+    function initPochtaCourier() {
+      if (deliveryMethod !== 'pochta-courier') return;
+      if (typeof courierStartWidget !== 'function') return;
+
+      const container = document.getElementById('ecom-widget-courier');
+      if (container) container.innerHTML = '';
+
+      try {
+        courierStartWidget({
+          id: 63047,
+          containerId: 'ecom-widget-courier',
+          weight: getTotalWeight(),
+          sumoc: getTotalSum(),
+          callbackFunction: window.callbackCourier,
+          order_lines: getOrderLines()
+        });
+      } catch (e) {
+        console.error('Ошибка виджета курьера:', e);
+      }
+    }
+
+    // ============================================================
+    // 6. ПЕРЕКЛЮЧЕНИЕ ДОСТАВКИ[cite: 1]
+    // ============================================================
+    document.querySelectorAll('input[name="delivery"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        deliveryMethod = this.value;
+        deliverySelected = false;
+        deliveryCost = 0;
+
+        document.getElementById('pochtaPvzBlock').style.display = 'none';
+        document.getElementById('pochtaCourierBlock').style.display = 'none';
+        document.getElementById('cdekBlock').style.display = 'none';
+
+        if (deliveryMethod === 'pochta-pvz') {
+          document.getElementById('pochtaPvzBlock').style.display = 'block';
+          initPochtaPvz();
+          document.getElementById('deliveryPricePvz').textContent = 'Выберите на карте';
+        } else if (deliveryMethod === 'pochta-courier') {
+          document.getElementById('pochtaCourierBlock').style.display = 'block';
+          initPochtaCourier();
+          document.getElementById('deliveryPriceCourier').textContent = 'Выберите на карте';
+        } else if (deliveryMethod === 'cdek') {
+          document.getElementById('cdekBlock').style.display = 'block';
+          deliveryCost = 350;
+          deliverySelected = true;
+        }
+        updateUI();
+      });
+    });
+
+    // Мгновенная перезагрузка карты при вводе города
+    let reloadTimeout = null;
+    document.getElementById('cityTo').addEventListener('input', function() {
+      clearTimeout(reloadTimeout);
+      reloadTimeout = setTimeout(() => {
+        if (deliveryMethod === 'pochta-pvz') initPochtaPvz();
+        else if (deliveryMethod === 'pochta-courier') initPochtaCourier();
+      }, 600);
+    });
+
+    // ============================================================
+    // 7. ИНИЦИАЛИЗАЦИЯ[cite: 1]
+    // ============================================================
+    renderProducts();
+    setTimeout(() => {
+      if (deliveryMethod === 'pochta-pvz') {
+        initPochtaPvz();
+      }
+    }, 500);
+
+  </script>
+
+</body>
+</html>
